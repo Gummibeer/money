@@ -14,12 +14,19 @@ use Money\Calculator\PhpCalculator;
 final class Money implements \JsonSerializable
 {
     const ROUND_HALF_UP = PHP_ROUND_HALF_UP;
+
     const ROUND_HALF_DOWN = PHP_ROUND_HALF_DOWN;
+
     const ROUND_HALF_EVEN = PHP_ROUND_HALF_EVEN;
+
     const ROUND_HALF_ODD = PHP_ROUND_HALF_ODD;
+
     const ROUND_UP = 5;
+
     const ROUND_DOWN = 6;
+
     const ROUND_HALF_POSITIVE_INFINITY = 7;
+
     const ROUND_HALF_NEGATIVE_INFINITY = 8;
 
     /**
@@ -343,6 +350,22 @@ final class Money implements \JsonSerializable
     }
 
     /**
+     * Returns a new Money object that represents
+     * the remainder after dividing the value by
+     * the given factor.
+     *
+     * @param Money $divisor
+     *
+     * @return Money
+     */
+    public function mod(Money $divisor)
+    {
+        $this->assertSameCurrency($divisor);
+
+        return new self($this->getCalculator()->mod($this->amount, $divisor->amount), $this->currency);
+    }
+
+    /**
      * Allocate the money according to a list of ratios.
      *
      * @param array $ratios
@@ -374,6 +397,10 @@ final class Money implements \JsonSerializable
         }
 
         for ($i = 0; $this->getCalculator()->compare($remainder, 0) === 1; ++$i) {
+            if (!$results[$i]->amount) {
+                continue;
+            }
+
             $results[$i]->amount = (string) $this->getCalculator()->add($results[$i]->amount, 1);
             $remainder = $this->getCalculator()->subtract($remainder, 1);
         }
@@ -401,6 +428,20 @@ final class Money implements \JsonSerializable
         }
 
         return $this->allocate(array_fill(0, $n, 1));
+    }
+
+    /**
+     * @param Money $money
+     *
+     * @return string
+     */
+    public function ratioOf(Money $money)
+    {
+        if ($money->isZero()) {
+            throw new \InvalidArgumentException('Cannot calculate a ratio of zero');
+        }
+
+        return $this->getCalculator()->divide($this->amount, $money->amount);
     }
 
     /**

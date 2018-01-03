@@ -165,6 +165,52 @@ final class Number
     }
 
     /**
+     * @param int $number
+     *
+     * @return Number
+     */
+    public function base10($number)
+    {
+        if (!is_int($number)) {
+            throw new \InvalidArgumentException('Expecting integer');
+        }
+
+        if ($this->integerPart === '0' && !$this->fractionalPart) {
+            return $this;
+        }
+
+        $sign = '';
+        $integerPart = $this->integerPart;
+
+        if ($integerPart[0] === '-') {
+            $sign = '-';
+            $integerPart = substr($integerPart, 1);
+        }
+
+        if ($number >= 0) {
+            $integerPart = ltrim($integerPart, '0');
+            $lengthIntegerPart = strlen($integerPart);
+            $integers = $lengthIntegerPart - min($number, $lengthIntegerPart);
+            $zeroPad = $number - min($number, $lengthIntegerPart);
+
+            return new Number(
+                $sign.substr($integerPart, 0, $integers),
+                rtrim(str_pad('', $zeroPad, '0').substr($integerPart, $integers).$this->fractionalPart, '0')
+            );
+        }
+
+        $number = abs($number);
+        $lengthFractionalPart = strlen($this->fractionalPart);
+        $fractions = $lengthFractionalPart - min($number, $lengthFractionalPart);
+        $zeroPad = $number - min($number, $lengthFractionalPart);
+
+        return new Number(
+            $sign.ltrim($integerPart.substr($this->fractionalPart, 0, $lengthFractionalPart - $fractions).str_pad('', $zeroPad, '0'), '0'),
+            substr($this->fractionalPart, $lengthFractionalPart - $fractions)
+        );
+    }
+
+    /**
      * @param string $number
      *
      * @return string
@@ -186,7 +232,7 @@ final class Number
 
             if (!isset(static::$numbers[$digit]) && !(0 === $position && '-' === $digit)) {
                 throw new \InvalidArgumentException(
-                    sprintf('Invalid integer part %s. Invalid digit %2 found', $number, $digit)
+                    sprintf('Invalid integer part %1$s. Invalid digit %2$s found', $number, $digit)
                 );
             }
 
@@ -217,7 +263,7 @@ final class Number
             $digit = $number[$position];
             if (!isset(static::$numbers[$digit])) {
                 throw new \InvalidArgumentException(
-                    'Invalid fractional part '.$number.'. Invalid digit '.$digit.' found'
+                    sprintf('Invalid fractional part %1$s. Invalid digit %2$s found', $number, $digit)
                 );
             }
         }

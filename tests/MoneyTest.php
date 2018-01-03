@@ -10,8 +10,11 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
     use RoundExamples;
 
     const AMOUNT = 10;
+
     const OTHER_AMOUNT = 5;
+
     const CURRENCY = 'EUR';
+
     const OTHER_CURRENCY = 'USD';
 
     public function test_it_creates_money_using_factories()
@@ -19,6 +22,8 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         $money = Money::XYZ(20);
 
         $this->assertInstanceOf(Money::class, $money);
+
+        $this->assertEquals(new Money(20, new Currency('XYZ')), $money);
         $this->assertEquals('20', $money->getAmount());
         $this->assertEquals('XYZ', $money->getCurrency()->getCode());
     }
@@ -48,6 +53,12 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(0 <= $result, $money->greaterThanOrEqual($other));
         $this->assertEquals(-1 === $result, $money->lessThan($other));
         $this->assertEquals(0 >= $result, $money->lessThanOrEqual($other));
+
+        if ($result === 0) {
+            $this->assertEquals($money, $other);
+        } else {
+            $this->assertNotEquals($money, $other);
+        }
     }
 
     /**
@@ -130,7 +141,7 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         foreach ($allocated as $key => $money) {
             $compareTo = new Money($results[$key], $money->getCurrency());
 
-            $this->assertTrue($money->equals($compareTo));
+            $this->assertEquals($money, $compareTo);
         }
     }
 
@@ -147,7 +158,7 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         foreach ($allocated as $key => $money) {
             $compareTo = new Money($results[$key], $money->getCurrency());
 
-            $this->assertTrue($money->equals($compareTo));
+            $this->assertEquals($money, $compareTo);
         }
     }
 
@@ -190,6 +201,21 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($result, $money->getAmount());
     }
 
+    /**
+     * @dataProvider modExamples
+     * @test
+     */
+    public function it_calculates_the_modulus_of_an_amount($left, $right, $expected)
+    {
+        $money = new Money($left, new Currency(self::CURRENCY));
+        $rightMoney = new Money($right, new Currency(self::CURRENCY));
+
+        $money = $money->mod($rightMoney);
+
+        $this->assertInstanceOf(Money::class, $money);
+        $this->assertEquals($expected, $money->getAmount());
+    }
+
     public function test_it_converts_to_json()
     {
         $this->assertEquals(
@@ -205,6 +231,31 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(Money::class, new Money(PHP_INT_MAX, new Currency('EUR')));
         $this->assertInstanceOf(Money::class, (new Money(PHP_INT_MAX, new Currency('EUR')))->add($one));
         $this->assertInstanceOf(Money::class, (new Money(PHP_INT_MAX, new Currency('EUR')))->subtract($one));
+    }
+
+    public function test_it_returns_ratio_of()
+    {
+        $currency = new Currency('EUR');
+        $zero = new Money(0, $currency);
+        $three = new Money(3, $currency);
+        $six = new Money(6, $currency);
+
+        $this->assertEquals(0, $zero->ratioOf($six));
+        $this->assertEquals(0.5, $three->ratioOf($six));
+        $this->assertEquals(1, $three->ratioOf($three));
+        $this->assertEquals(2, $six->ratioOf($three));
+    }
+
+    /**
+     * @expectedException \InvalidArgumentException
+     */
+    public function test_it_throws_when_calculating_ratio_of_zero()
+    {
+        $currency = new Currency('EUR');
+        $zero = new Money(0, $currency);
+        $six = new Money(6, $currency);
+
+        $six->ratioOf($zero);
     }
 
     public function equalityExamples()
@@ -248,6 +299,11 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
             [5, [7, 3], [4, 1]],
             [5, [7, 3, 0], [4, 1, 0]],
             [-5, [7, 3], [-3, -2]],
+            [5, [0, 7, 3], [0, 4, 1]],
+            [5, [7, 0, 3], [4, 0, 1]],
+            [5, [0, 0, 1], [0, 0, 5]],
+            [5, [0, 3, 7], [0, 2, 3]],
+            [0, [0, 0, 1], [0, 0, 0]],
         ];
     }
 
@@ -294,6 +350,16 @@ final class MoneyTest extends \PHPUnit_Framework_TestCase
             ['1', -1],
             ['0', 0],
             ['-1', 1],
+        ];
+    }
+
+    public function modExamples()
+    {
+        return [
+            [11, 5, '1'],
+            [9, 3, '0'],
+            [1006, 10, '6'],
+            [1007, 10, '7'],
         ];
     }
 }
